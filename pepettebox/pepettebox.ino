@@ -370,7 +370,7 @@ void Geofencing(void){
 		Serial.println("-- Geofencing --"); 
 		//compute distance between actual position and reference position
 		float distance_base = DistanceBetween(MyParam.base_lat, MyParam.base_lon, MyGPSPos.latitude, MyGPSPos.longitude);
-		sprintf(buff, "distance BASE->Robot: %.1f m", distance_base);
+		sprintf(buff, "distance BASE->Box: %.1f m", distance_base);
 		Serial.println(buff);
 		
 		//check where we are
@@ -1132,7 +1132,7 @@ void AlertMng(void){
 		//convert bit to string
 		if(MyBattery.charging_status)
 			sprintf(chargdir,"charging");		
-		sprintf(buff, "Robomow Alert !! Current position is : https://www.google.com/maps?q=%2.6f%c,%3.6f%c \r\nLiPo = %d%%, %s\r\nExternal supply : %2.1fV", MyGPSPos.latitude, MyGPSPos.latitude_dir, MyGPSPos.longitude, MyGPSPos.longitude_dir, MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage); 
+		sprintf(buff, "Alert !! Current position is : https://www.google.com/maps?q=%2.6f%c,%3.6f%c \r\nLiPo = %d%%, %s\r\nExternal supply : %2.1fV", MyGPSPos.latitude, MyGPSPos.latitude_dir, MyGPSPos.longitude, MyGPSPos.longitude_dir, MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage); 
 		Serial.println(buff);
 		SendSMS(MyParam.myphonenumber, buff);
 	}
@@ -1381,7 +1381,7 @@ void setup() {
 	pinMode(FLOODSENSOR, INPUT);
 	
 	delay(5000);
-	Serial.println("RoboMowTrak "); 
+	Serial.println("Pepette.com.Box "); 
 	// GPS power on
 	LGPS.powerOn();
 	Serial.println("GPS Powered on.");
