@@ -23,13 +23,13 @@
 #define RADIUS					150			// radius in meter for geofencing centered in BASE_LAT,BASE_LON. When GPS pos is outside this radius -> Alarm !
 
 // Lat/Lon station position (for geofencing)
-#define BASE_LAT	43.791489		
+#define BASE_LAT	43.56457		
 #define BASE_LAT_DIR	'N'	
-#define BASE_LON	1.1077
+#define BASE_LON	7.0751
 #define BASE_LON_DIR	'E'
 
 // Phone number to call or for SMS
-#define MYPHONENUMBER	"+33679707918"		// Default phone number where to send messages
+#define MYPHONENUMBER	"+33000000"		// Default phone number where to send messages
 
 // SMS Menu
 #define SMSSECRET	"1234"					// Default secret code to activate menu
