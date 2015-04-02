@@ -284,15 +284,13 @@ void GetAnalogRead(void){
 		Serial.println("-- Analog input read --");
 		MyFlag.taskGetAnalog = false;
 		// read 16 times and average
-		unsigned int i = 0;
-		//on fait plusieurs mesures
-		for( i = 0; i < NB_SAMPLE_ANALOG; i++){
+		for( unsigned int i = 0; i < NB_SAMPLE_ANALOG; i++){
 			//read analog input
 			long x  = analogRead(A0);	//gives value between 0 to 1023
 			samples.add(x);
 			delay(10);
 		}
-		//ocompute median value
+		// compute median value
 		MyExternalSupply.raw = samples.getMedian();
 		sprintf(buff," Analog raw input = %d\r\n", MyExternalSupply.raw );
 		Serial.print(buff);
