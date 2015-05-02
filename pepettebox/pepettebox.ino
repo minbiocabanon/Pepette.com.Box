@@ -28,7 +28,13 @@
 #include <math.h>
 #include <LEEPROM.h>
 #include <LDateTime.h>
+#include <LStorage.h>
+#include <LFlash.h>
+#include <LGPRSClient.h>
+#include <LGPRS.h>
 #include "RunningMedian.h"
+#include "OTAUpdate.h"
+#include "OTAUtils.h"
 
 #include "EEPROMAnything.h"
 #include "myprivatedata.h"
@@ -73,6 +79,7 @@ unsigned long taskCheckSMS;
 unsigned long taskCheckFlood;
 unsigned long taskStatusSMS;
 unsigned long TimeOutSMSMenu;
+unsigned long taskCheckFW;
 
 
 //----------------------------------------------------------------------
@@ -1209,6 +1216,22 @@ void AlertMng(void){
 		MyParam.flag_alarm_low_bat = false;
 		MyFlag.taskCheckInputVoltage = false;
 	}
+	
+	
+	// Check input supply level (can be an external battery) and LiPo level
+	if (  MyFlag.taskCheckFW ){
+		// reset flag
+		MyFlag.taskCheckFW = false;
+		// check if hour + minute is reach 
+		if ( MyGPSPos.hour == PERIODIC_CHECK_FW_H && MyGPSPos.minute == PERIODIC_CHECK_FW_M){
+			Serial.println("--- AlertMng : FW check on the server");
+			// It's time to check if there is a Firmware update on the remote server
+			// The following code can take some minutes to proceed ...
+			if (OTAUpdate.checkUpdate()) {
+			  OTAUpdate.startUpdate();
+			}
+		}
+	}
 }
 //----------------------------------------------------------------------
 //!\brief	Load params from EEPROM
@@ -1348,6 +1371,11 @@ void Scheduler() {
 		MyFlag.taskStatusSMS = true;
 	}
 
+	if( (millis() - taskCheckFW) > PERIODIC_CHECK_FW){
+		taskCheckFW = millis();
+		MyFlag.taskCheckFW = true;
+	}
+
 	if( (millis() - taskGetAnalog) > PERIOD_READ_ANALOG){
 		taskGetAnalog = millis();
 		MyFlag.taskGetAnalog = true;
@@ -1357,8 +1385,6 @@ void Scheduler() {
 		taskCheckInputVoltage = millis();
 		MyFlag.taskCheckInputVoltage = true;
 	}
-	
-	
 	
 	if( ((millis() - TimeOutSMSMenu) > TIMEOUT_SMS_MENU) && MySMS.menupos != SM_LOGIN){
 		MySMS.menupos = SM_LOGIN;
@@ -1404,6 +1430,12 @@ void setup() {
 		LSMS.flush(); // delete message
 	}
 	
+	Serial.printf("init gprs... \r\n");
+	while (!LGPRS.attachGPRS("Free", NULL, NULL)) {
+		delay(500);
+	}
+	OTAUpdate.begin("92.245.144.185", "50150", "OTA_pepettebox");
+	
 	// load params from EEPROM
 	LoadParamEEPROM();
 	//print structure
@@ -1419,7 +1451,7 @@ void setup() {
 	taskGetAnalog = millis();
 	taskCheckSMS = millis();
 	taskStatusSMS = millis();
-	
+	taskCheckFW = millis();
 	
 	// set this flag to proceed a first LiPO level read (if an SMS is received before timer occurs)
 	MyFlag.taskGetLiPo = true;
