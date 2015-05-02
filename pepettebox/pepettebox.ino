@@ -322,7 +322,7 @@ void GetDigitalInput(void){
 		// if input is true, we are diviiiiiing !
 		if ( MyFloodSensor.value == FLOODSENSOR_ACTIVE ){
 			//prepare SMS to warn user
-			sprintf(buff, "Alert! flood sensor has detect water.\r\n Input level is %d.", MyFloodSensor.value); 
+			sprintf(buff, " Alert! flood sensor has detected water.\r\n Input level is %d.", MyFloodSensor.value); 
 			Serial.println(buff);
 			//send SMS
 			SendSMS(MySMS.incomingnumber, buff);
