@@ -25,5 +25,5 @@
 #define PERIODIC_STATUS_SMS		60000		// 1 min. (DO NOT CHANGE) : interval between two Hour+Minute check of periodic time (see below)
 
 #define PERIODIC_CHECK_FW		60000		// 1 min. (DO NOT CHANGE) : interval between two Hour+Minute check of periodic time (see below)
-#define PERIODIC_CHECK_FW_H		18			// Hour for time of periodic check of firmware
-#define PERIODIC_CHECK_FW_M		35			// Minute for time of periodic check of firmware
+#define PERIODIC_CHECK_FW_H		12			// Hour for time of periodic check of firmware
+#define PERIODIC_CHECK_FW_M		30			// Minute for time of periodic check of firmware
