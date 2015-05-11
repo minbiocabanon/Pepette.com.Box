@@ -44,30 +44,19 @@
 
 // SMS menu architecture
 #define TXT_MAIN_MENU	"Main Menu\r\n1 : Status\r\n2 : Alarm ON\r\n3 : Alarm OFF\r\n4 : Params\r\n0 : Exit"
-#define TXT_PARAMS_MENU "Params Menu\r\n5 : Change default num.\r\n6 : Change coord.\r\n7 : Change radius\r\n8 : Change secret\r\n9 : Periodic status ON\r\n10 : Periodic status OFF\r\n11 : Low power alarm ON\r\n12 : Low power alarm OFF\r\n13 : Change low power trig.\r\n14 : Update firmware\r\n15 : Restore factory settings"
+#define TXT_PARAMS_MENU "Params Menu\r\n5 : Change default num.\r\n6 : Change coord.\r\n7 : Change radius\r\n8 : Change secret\r\n9 : Periodic status ON\r\n10 : Periodic status OFF\r\n11 : Low power alarm ON\r\n12 : Low power alarm OFF\r\n13 : Change low power trig.\r\n14 : Change flood sensor trig.\r\n15 : Update firmware\r\n16 : Restore factory settings"
 
 // Led gpio definition
 #define LEDGPS  				13
 #define LEDALARM  				12
-// Other gpio
-#define FLOODSENSOR  			8			// Analog input where flood sensor is connected
-#define FLOODSENSOR_ACTIVE		0			// 0 or 1 ,Set level when flood sensor is active (water detected)
-
-// Analog input
-#define NB_SAMPLE_ANALOG		16
-#define VOLT_DIVIDER_INPUT		5.964 		// Voltage divider ratio for mesuring input voltage. 
-#define MAX_DC_IN				36			// Max input voltage
-#define MIN_DC_IN				9			// Minimum input voltage
-// Lipo
-// battery level trigger for alarm , in % , WARNING, LIPO level are only 100,66 and 33%
-// Do not use value < 33% because linkitone will not give you another value until 0% ...
-#define LIPO_LEVEL_TRIG	33	// in % , values available 33 - 66 (0 and exlucded logically)
 
 // GPS
 gpsSentenceInfoStruct info;
 
 // Median computation
-RunningMedian samples = RunningMedian(NB_SAMPLE_ANALOG);
+RunningMedian samples_A0 = RunningMedian(NB_SAMPLE_ANALOG);
+RunningMedian samples_A1 = RunningMedian(NB_SAMPLE_ANALOG);
+RunningMedian samples_A2 = RunningMedian(NB_SAMPLE_ANALOG);
 
 // Miscalleneous 
 char buff[512];
@@ -291,16 +280,25 @@ void GetAnalogRead(void){
 	if(MyFlag.taskGetAnalog){
 		Serial.println("-- Analog input read --");
 		MyFlag.taskGetAnalog = false;
+		long x;
 		// read 16 times and average
 		for( unsigned int i = 0; i < NB_SAMPLE_ANALOG; i++){
-			//read analog input
-			long x  = analogRead(A0);	//gives value between 0 to 1023
-			samples.add(x);
-			delay(10);
+			//read analog input voltage
+			x  = analogRead(A0);	//gives value between 0 to 1023
+			samples_A0.add(x);
+			delay(5);
+			//read analog input voltage divider flood sensor
+			x  = analogRead(A1);	//gives value between 0 to 1023
+			samples_A1.add(x);
+			delay(5);
+			//read analog input raw flood sensor
+			x  = analogRead(A2);	//gives value between 0 to 1023
+			samples_A2.add(x);
+			delay(5);			
 		}
-		// compute median value
-		MyExternalSupply.raw = samples.getMedian();
-		sprintf(buff," Analog raw input = %d\r\n", MyExternalSupply.raw );
+		// compute median value input voltage
+		MyExternalSupply.raw = samples_A0.getMedian();
+		sprintf(buff," Analog raw input = %2.1f\r\n", MyExternalSupply.raw );
 		Serial.print(buff);
 		// convert raw data to voltage
 		MyExternalSupply.analog_voltage = MyExternalSupply.raw * 5.0 / 1024.0;
@@ -310,34 +308,71 @@ void GetAnalogRead(void){
 		MyExternalSupply.input_voltage = MyExternalSupply.analog_voltage * VOLT_DIVIDER_INPUT + 0.41; // +0.41V for forward voltage of protection diode
 		sprintf(buff," Input voltage= %2.1fV\r\n", MyExternalSupply.input_voltage );
 		Serial.println(buff);
+		
+		// compute median value for flood sensor voltage divider
+		MyFloodSensor.raw_divider = samples_A1.getMedian();
+		sprintf(buff," Flood sensor divider raw value = %2.1f\r\n", MyFloodSensor.raw_divider );
+		Serial.print(buff);
+		// convert raw data to voltage
+		MyFloodSensor.analog_voltage_divider = MyFloodSensor.raw_divider * 5.0 / 1024.0;
+		sprintf(buff," Flood sensor divider voltage = %3.1fV\r\n", MyFloodSensor.analog_voltage_divider );
+		Serial.print(buff);
+		
+		// compute median value for flood sensor raw voltage
+		MyFloodSensor.raw = samples_A2.getMedian();
+		sprintf(buff," Flood sensor raw value= %3.1f\r\n", MyFloodSensor.raw );
+		Serial.print(buff);
+		// convert raw data to voltage
+		MyFloodSensor.analog_voltage = MyFloodSensor.raw * 5.0 / 1024.0;
+		sprintf(buff," Flood sensor raw voltage = %3.1fV\r\n", MyFloodSensor.analog_voltage );
+		Serial.print(buff);		
+		
+		Serial.println();
 	}	
 }
 
 //----------------------------------------------------------------------
-//!\brief	Read Digital input 
+//!\brief	Check if flood sensor is dry or wet 
 //!\return  -
 //----------------------------------------------------------------------
-void GetDigitalInput(void){	
+void CheckFloodSensor(void){	
 	// if it's time to get digital input from flood sensor
 	if(MyFlag.taskCheckFlood){
 		Serial.println("-- Flood sensor input read --");
 		MyFlag.taskCheckFlood = false;
 		//read digital input
-		MyFloodSensor.value = digitalRead(FLOODSENSOR);
-		sprintf(buff," Digital input = %d\r\n", MyFloodSensor.value );
-		Serial.print(buff);
 		
-		// if input is true, we are diviiiiiing !
-		if ( MyFloodSensor.value == FLOODSENSOR_ACTIVE ){
+		
+		// For testing pupose
+		// MyFloodSensor.value = digitalRead(FLOODSENSOR);
+		// sprintf(buff," Digital input = %d\r\n", MyFloodSensor.value );
+		// Serial.print(buff);
+		// // if input is true, we are diviiiiiing !
+		// if ( MyFloodSensor.value == FLOODSENSOR_ACTIVE ){
+			// //prepare SMS to warn user
+			// sprintf(buff, " Alert! flood sensor has detected water.\r\n Input level is %d.", MyFloodSensor.value); 
+			// Serial.println(buff);
+			// //send SMS
+			// SendSMS(MySMS.incomingnumber, buff);
+		// }
+		// else{
+			// Serial.println(" Flood sensor is dry.");
+		// }
+		
+		// if read value is higher than trigger value, it's mean that there is too much water !
+		if ( MyFloodSensor.raw > FLOODSENSOR_TRIG ){
 			//prepare SMS to warn user
-			sprintf(buff, " Alert! flood sensor has detected water.\r\n Input level is %d.", MyFloodSensor.value); 
+			sprintf(buff, " Alert! flood sensor has detected water.\r\n Input value is %3.1f\r\n(trigger value is %3.1f).", MyFloodSensor.raw, FLOODSENSOR_TRIG); 
 			Serial.println(buff);
 			//send SMS
 			SendSMS(MySMS.incomingnumber, buff);
 		}
 		else{
-			Serial.println(" Flood sensor is dry.");
-		}
+			sprintf(buff, " Flood sensor is dry.\r\n Input value is %3.1f\r\n(trigger value is %3.1f) \r\n", MyFloodSensor.raw, FLOODSENSOR_TRIG); 
+			Serial.println(buff);
+		}		
+		
+		
 	}	
 }
 
@@ -720,7 +755,7 @@ void ProcessLowPowTrig(){
 			MySMS.menupos = SM_MENU_MAIN;			
 		}
 		else{
-			sprintf(buff, "Error, value is outside rangee : %2.1fV", value_sms); 
+			sprintf(buff, "Error, value is outside range : %2.1fV", value_sms); 
 			Serial.println(buff);
 			//send SMS
 			SendSMS(MySMS.incomingnumber, buff);	
@@ -737,6 +772,53 @@ void ProcessLowPowTrig(){
 		MySMS.menupos = SM_MENU_MAIN;
 	}
 }
+
+//----------------------------------------------------------------------
+//!\brief	Proceed to change trigger value for flood sensor alarm
+//!\brief	MySMS.message should contain a tension like  11.6
+//!\return  -
+//----------------------------------------------------------------------
+void ProcessChgFloodSensorTrig(){
+	//check lengh before getting data
+	if( strlen(MySMS.message) <= 5 ){
+		// convert SMS to float
+		float value_sms = atof(MySMS.message);
+		sprintf(buff, "SMS content as value : %3.1f\n",value_sms);
+		Serial.println(buff);
+		
+		// check that it is a value inside the range
+		if( value_sms > MIN_FLOOR and value_sms <= MAX_FLOOR ){
+			// value is OK , we can store it in EEPROM
+			MyParam.trig_input_level = value_sms;
+			//Save change in EEPROM
+			EEPROM_writeAnything(0, MyParam);
+			Serial.println("New value saved in EEPROM");
+			sprintf(buff, "New trigger value for flood sensor saved : %3.1f", MyParam.flood_sensor_trig); 
+			Serial.println(buff);
+			//send SMS
+			SendSMS(MySMS.incomingnumber, buff);	
+			//change state machine to Main_menu
+			MySMS.menupos = SM_MENU_MAIN;			
+		}
+		else{
+			sprintf(buff, "Error, value is outside range : %3.1fV", value_sms); 
+			Serial.println(buff);
+			//send SMS
+			SendSMS(MySMS.incomingnumber, buff);	
+			//change state machine to Main_menu
+			MySMS.menupos = SM_MENU_MAIN;			
+		}
+	}
+	else{
+		sprintf(buff, "Error in size parameters (%d): %s.", strlen(MySMS.message), MySMS.message); 
+		Serial.println(buff);
+		//send SMS
+		SendSMS(MySMS.incomingnumber, buff);	
+		//change state machine to Main_menu
+		MySMS.menupos = SM_MENU_MAIN;
+	}
+}
+
 
 //----------------------------------------------------------------------
 //!\brief	Proceed to restore all factory settings 
@@ -993,16 +1075,26 @@ void ProcessMenuMain(void){
 		case CMD_CHG_LOWPOW_TRIG:
 			Serial.println("Change low power trigger level");
 			//prepare SMS content
-			sprintf(buff, "Send tension in volt, ex. :  11.6\r\nActual trig. is %2.1fV", MyParam.trig_input_level); 
+			sprintf(buff, "Send tension in volt, ex. :  11.6\r\nValue must be  between %d and %d.\r\nActual trig. is %2.1fV", MIN_DC_IN, MAX_DC_IN, MyParam.trig_input_level); 
 			Serial.println(buff);
 			//send SMS
 			SendSMS(MySMS.incomingnumber, buff);
 			MySMS.menupos = SM_CHG_LOWPOW_TRIG;		
 			break;
-
+		
+		case CMD_CHG_FLOOD_TRIG:
+			Serial.println("Change flood sensor trigger");
+			//prepare SMS content
+			sprintf(buff, "Send value between %d and %d.\r\nActual trig. is %3.1f", MIN_FLOOR, MAX_FLOOR, MyParam.flood_sensor_trig); 
+			Serial.println(buff);
+			//send SMS
+			SendSMS(MySMS.incomingnumber, buff);
+			MySMS.menupos = SM_CHG_FLOODSENSORTRIG;		
+			break;
+			
 		case CMD_UPDATE_FW:
 			//prepare SMS content
-			sprintf(buff, "FIRMWARE UPDATE WILL PROCEED IF A NEW VERSION IS AVAILABLE. DEVICE WILL REBOOT SOON. WAIT ABOUT 2 MINUTES"); 
+			sprintf(buff, "FIRMWARE UPDATE WILL PROCEED IF A NEW VERSION IS AVAILABLE."); 
 			Serial.println(buff);
 			//send SMS
 			SendSMS(MySMS.incomingnumber, buff);
@@ -1106,6 +1198,13 @@ void MenuSMS(void){
 				Serial.println("Proceed to change low power level");
 				ProcessLowPowTrig();
 				break;
+				
+			case SM_CHG_FLOODSENSORTRIG:
+				// reload timer to avoid auto-logout
+				TimeOutSMSMenu = millis();
+				Serial.println("Proceed to change flood sensor trig value");
+				ProcessChgFloodSensorTrig();
+				break;				
 		}
 	
 		// SMS read reset flag
@@ -1229,8 +1328,7 @@ void AlertMng(void){
 		MyFlag.taskCheckInputVoltage = false;
 	}
 	
-	
-	// Check input supply level (can be an external battery) and LiPo level
+	// Check if it's time to check for a firmware update on the server
 	if (  MyFlag.taskCheckFW ){
 		// reset flag
 		MyFlag.taskCheckFW = false;
@@ -1249,8 +1347,14 @@ void AlertMng(void){
 				// DO update			
 				OTAUpdate.startUpdate();
 			}
+			else{
+				// send a SMS to say that there is no update available
+				sprintf(buff, "  No firmware found or host not available." ); 
+				Serial.println(buff);
+				SendSMS(MyParam.myphonenumber, buff);	
+			}
 		}
-	}
+	}	
 }
 //----------------------------------------------------------------------
 //!\brief	Load params from EEPROM
@@ -1281,9 +1385,10 @@ void LoadParamEEPROM() {
 		MyParam.base_lon_dir = BASE_LON_DIR;
 		MyParam.lipo_level_trig = LIPO_LEVEL_TRIG;
 		MyParam.trig_input_level = TRIG_INPUT_LEVEL;
+		MyParam.flood_sensor_trig = FLOODSENSOR_TRIG;
 		//set flag that default data are stored
 		MyParam.flag_data_written = true;
-		
+				
 		//SAVE IN EEPROM !
 		EEPROM_writeAnything(0, MyParam);
 		Serial.println("--- !!! DEFAULT parameters stored in EEPROM !!! --- ");
@@ -1352,7 +1457,9 @@ void PrintMyParam() {
 	sprintf(buff, "  lipo_level_trig = %d%%", MyParam.lipo_level_trig);
 	Serial.println(buff);
 	sprintf(buff, "  trig_input_level = %2.1fV", MyParam.trig_input_level);
-	Serial.println(buff);	
+	Serial.println(buff);
+	sprintf(buff, "  flood_sensor_trig = %3.1f", MyParam.flood_sensor_trig);
+	Serial.println(buff);		
 }
 
 //----------------------------------------------------------------------
@@ -1433,7 +1540,7 @@ void setup() {
 	
 	// LTask will help you out with locking the mutex so you can access the global data
     LTask.remoteCall(createThread1, NULL);
-	//LTask.remoteCall(createThread2, NULL);
+	//LTask.remoteCall(createThreadFW, NULL);
 	Serial.println("Launch threads.");
 	
 	// GSM setup
@@ -1488,7 +1595,7 @@ void loop() {
 	GetGPSPos();
 	GetLiPoInfo();
 	GetAnalogRead();
-	GetDigitalInput();
+	CheckFloodSensor();
 	CheckSMSrecept();
 	MenuSMS();
 	// SendGPS2Wifi();
@@ -1506,12 +1613,12 @@ boolean createThread1(void* userdata) {
     return true;
 }
 
-// boolean createThread2(void* userdata) {
-        // // The priority can be 1 - 255 and default priority are 0
-        // // the arduino priority are 245
-		// vm_thread_create(thread_ledalarm, NULL, 255);
-    // return true;
-// }
+boolean createThreadFW(void* userdata) {
+	// The priority can be 1 - 255 and default priority are 0
+	// the arduino priority are 245
+	vm_thread_create(thread_fwupdate, NULL, 255);
+    return true;
+}
 
 //----------------------------------------------------------------------
 //!\brief           THREAD LED GPS
@@ -1557,12 +1664,12 @@ VMINT32 thread_ledgps(VM_THREAD_HANDLE thread_handle, void* user_data){
 }
 
 //----------------------------------------------------------------------
-//!\brief           THREAD LED ALARM
+//!\brief           THREAD FOR FIRMWARE UPDATE
 //---------------------------------------------------------------------- 
-// VMINT32 thread_ledalarm(VM_THREAD_HANDLE thread_handle, void* user_data){
-    // for (;;){
-        // Serial.println("test thread2");
-        // delay(2000);
-    // }
-    // return 0;
-// }
+VMINT32 thread_fwupdate(VM_THREAD_HANDLE thread_handle, void* user_data){
+    for (;;){
+        delay(1000);
+		
+    }
+    return 0;
+}

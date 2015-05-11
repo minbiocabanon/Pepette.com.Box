@@ -22,6 +22,13 @@
 //Params for geofencing
 #define RADIUS					150			// radius in meter for geofencing centered in BASE_LAT,BASE_LON. When GPS pos is outside this radius -> Alarm !
 
+// Params for flood sensor (analog)
+#define FLOODSENSOR_TRIG		500.0	// Trigger value on raw data (ADC) on direct ready from flood sensor
+										// Dry sensor : 0-10
+										// Sensor touched with finger : 100-300
+										// wet sensor : ~700-800
+
+
 // Lat/Lon station position (for geofencing)
 #define BASE_LAT	43.56457		
 #define BASE_LAT_DIR	'N'	

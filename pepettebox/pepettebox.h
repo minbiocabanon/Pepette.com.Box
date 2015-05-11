@@ -5,6 +5,26 @@
 //! \author		minbiocabanon
 //--------------------------------------------------
 
+// Analog input
+#define NB_SAMPLE_ANALOG		16
+#define VOLT_DIVIDER_INPUT		5.964 		// Voltage divider ratio for mesuring input voltage. 
+#define MIN_DC_IN				9			// Minimum input voltage
+#define MAX_DC_IN				36			// Max input voltage
+
+
+// Lipo
+// battery level trigger for alarm , in % , WARNING, LIPO level are only 100,66 and 33%
+// Do not use value < 33% because linkitone will not give you another value until 0% ...
+#define LIPO_LEVEL_TRIG	33	// in % , values available 33 - 66 (0 and exlucded logically)
+
+// flood sensor
+#define FLOODSENSOR  			8			// Analog input where flood sensor is connected
+#define FLOODSENSOR_ACTIVE		0			// 0 or 1 ,Set level when flood sensor is active (water detected)
+#define MIN_FLOOR				0			// Minimum value for flood sensor trigger
+#define MAX_FLOOR				1000		// Maximum value for flood sensor trigger
+
+
+
 //----------------------------------------------------------------------
 //!\brief	Structure where user parameters are stored in EEPROM (tuned by SMS)
 //!\brief	DO NOT MODIFY THIS !
@@ -24,6 +44,7 @@ struct EEPROM_param {
 	char base_lon_dir;
 	unsigned int lipo_level_trig;		// battery level, when trigged, should send an alarm
 	float trig_input_level;				// trigger alarm for low level input 
+	float flood_sensor_trig;				// trigger alarm for low level input 
 }MyParam;
 
 //----------------------------------------------------------------------
@@ -48,13 +69,17 @@ struct Battery {
 	}MyBattery;
 	
 struct AnalogInput {
-	unsigned int raw;
+	long raw;
 	double analog_voltage;
 	double input_voltage;
 	}MyExternalSupply;	
 
 struct DigitalSensor {
 	unsigned int value;
+	double raw_divider; 
+	double analog_voltage_divider;
+	double raw; 
+	double analog_voltage;
 	}MyFloodSensor;	
 	
 struct SMS {
@@ -102,7 +127,8 @@ enum SMSMENU{
 	SM_CHG_RADIUS,	//5
 	SM_CHG_SECRET,	//6
 	SM_RESTORE_DFLT, //7
-	SM_CHG_LOWPOW_TRIG//8
+	SM_CHG_LOWPOW_TRIG, 	//8
+	SM_CHG_FLOODSENSORTRIG,	//9
 	};
 
 enum CMDSMS{
@@ -120,6 +146,7 @@ enum CMDSMS{
 	CMD_LOWPOWER_ON,	//11
 	CMD_LOWPOWER_OFF,	//12
 	CMD_CHG_LOWPOW_TRIG,//13
-	CMD_UPDATE_FW,		//14
-	CMD_RESTORE_DFLT	//15
+	CMD_CHG_FLOOD_TRIG,	//14
+	CMD_UPDATE_FW,		//15
+	CMD_RESTORE_DFLT	//16
 	};	
