@@ -9,8 +9,7 @@
 //! \brief		Flood sensor interface (GPIO) or other sensor.
 //! \brief		Serial message are for debug purpose only.
 //! \brief		Over The Air by GPRS sketche update
-//! \brief		NOT USED YET : Wifi for tracking/logging position while in my garden
-//! \date		2015-Mar
+//! \date		2015-May
 //! \author		minbiocabanon
 //--------------------------------------------------
 
@@ -44,7 +43,7 @@
 
 // SMS menu architecture
 #define TXT_MAIN_MENU	"Main Menu\r\n1 : Status\r\n2 : Alarm ON\r\n3 : Alarm OFF\r\n4 : Params\r\n0 : Exit"
-#define TXT_PARAMS_MENU "Params Menu\r\n5 : Change default num.\r\n6 : Change coord.\r\n7 : Change radius\r\n8 : Change secret\r\n9 : Periodic status ON\r\n10 : Periodic status OFF\r\n11 : Low power alarm ON\r\n12 : Low power alarm OFF\r\n13 : Change low power trig.\r\n14 : Change flood sensor trig.\r\n15 : Update firmware\r\n16 : Restore factory settings"
+#define TXT_PARAMS_MENU "Params Menu\r\n 5 : Change default num.\r\n 6 : Change coord.\r\n 7 : Change radius\r\n 8 : Change secret\r\n 9 : Periodic status ON\r\n10 : Periodic status OFF\r\n11 : Low power alarm ON\r\n12 : Low power alarm OFF\r\n13 : Change low power trig.\r\n14 : Change flood sensor trig.\r\n15 : Update firmware\r\n16 : Restore factory settings"
 
 // Led gpio definition
 #define LEDGPS  				13
@@ -60,6 +59,7 @@ RunningMedian samples_A2 = RunningMedian(NB_SAMPLE_ANALOG);
 
 // Miscalleneous 
 char buff[512];
+int incomingByte = 0;   // for incoming serial data
 unsigned long taskGetGPS;
 unsigned long taskTestGeof;
 unsigned long taskGetLiPo;
@@ -341,8 +341,7 @@ void CheckFloodSensor(void){
 		Serial.println("-- Flood sensor input read --");
 		MyFlag.taskCheckFlood = false;
 		//read digital input
-		
-		
+
 		// For testing pupose
 		// MyFloodSensor.value = digitalRead(FLOODSENSOR);
 		// sprintf(buff," Digital input = %d\r\n", MyFloodSensor.value );
@@ -366,13 +365,15 @@ void CheckFloodSensor(void){
 			Serial.println(buff);
 			//send SMS
 			SendSMS(MySMS.incomingnumber, buff);
+			// set the flag
+			MyFloodSensor.value = FLOODSENSOR_ACTIVE; 
 		}
 		else{
 			sprintf(buff, " Flood sensor is dry.\r\n Input value is %3.1f\r\n(trigger value is %3.1f) \r\n", MyFloodSensor.raw, FLOODSENSOR_TRIG); 
 			Serial.println(buff);
-		}		
-		
-		
+			// set the flag
+			MyFloodSensor.value = FLOODSENSOR_ACTIVE+1; 
+		}
 	}	
 }
 
@@ -473,7 +474,7 @@ void CheckSMSrecept(void){
 void ProcessChgNum(){
 
 	//check lengh before split
-	if( strlen(MySMS.message) == 25 ){
+	if( strlen(MySMS.message) <= 25 ){
 		// Read each command pair 
 		char* command = strtok(MySMS.message, ",");
 		sprintf(buff, "old num : %s\n",command);
@@ -789,7 +790,7 @@ void ProcessChgFloodSensorTrig(){
 		// check that it is a value inside the range
 		if( value_sms > MIN_FLOOR and value_sms <= MAX_FLOOR ){
 			// value is OK , we can store it in EEPROM
-			MyParam.trig_input_level = value_sms;
+			MyParam.flood_sensor_trig = value_sms;
 			//Save change in EEPROM
 			EEPROM_writeAnything(0, MyParam);
 			Serial.println("New value saved in EEPROM");
@@ -925,7 +926,8 @@ void ProcessMenuMain(void){
 				sprintf(chargdir,"charging");				
 			//if GPS is fixed , prepare a complete message
 			if(MyFlag.fix3D == true){
-				sprintf(buff, "Status : \r\nCurrent position is : https://www.google.com/maps?q=%2.6f%c,%3.6f%c \r\nLiPo = %d%%, %s\r\nExternal supply : %2.1fV\r\nFlood sensor is %s.\n\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s.", MyGPSPos.latitude, MyGPSPos.latitude_dir, MyGPSPos.longitude, MyGPSPos.longitude_dir, MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagstatus_flood, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood); 
+				//sprintf(buff, "Status : \r\nCurrent position is : https://www.google.com/maps?q=%2.6f%c,%3.6f%c \r\nLiPo = %d%%, %s\r\nExternal supply : %2.1fV\r\nFlood sensor is %s.\n\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s.", MyGPSPos.latitude, MyGPSPos.latitude_dir, MyGPSPos.longitude, MyGPSPos.longitude_dir, MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagstatus_flood, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood);
+			sprintf(buff, "Status : \r\nCurrent position is : https://www.google.com/maps?q=%2.6f%c,%3.6f%c \r\nLiPo = %d%%, %s\r\nExternal supply : %2.1fV\r\nFlood sensor is %s.\n\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s (%d).", MyGPSPos.latitude, MyGPSPos.latitude_dir, MyGPSPos.longitude, MyGPSPos.longitude_dir, MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagstatus_flood, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood, MyFloodSensor.raw); 				
 			}
 			// else, use short form message
 			else{
@@ -1085,7 +1087,7 @@ void ProcessMenuMain(void){
 		case CMD_CHG_FLOOD_TRIG:
 			Serial.println("Change flood sensor trigger");
 			//prepare SMS content
-			sprintf(buff, "Send value between %d and %d.\r\nActual trig. is %3.1f", MIN_FLOOR, MAX_FLOOR, MyParam.flood_sensor_trig); 
+			sprintf(buff, "Send value between %d and %d.\r\nCurrent value is %2.1f\r\nActual trig. is %3.1f", MIN_FLOOR, MAX_FLOOR, MyFloodSensor.analog_voltage, MyParam.flood_sensor_trig); 
 			Serial.println(buff);
 			//send SMS
 			SendSMS(MySMS.incomingnumber, buff);
@@ -1146,7 +1148,8 @@ void MenuSMS(void){
 					TimeOutSMSMenu = millis();
 				}
 				else{
-					Serial.println("Wrong Password. Do nothing !");
+					sprintf(buff, "Wrong password, do nothing. msg[%s] != code[%s] ", MySMS.message, MyParam.smssecret); 
+					Serial.println(buff);
 				}
 				break;
 			
@@ -1349,7 +1352,7 @@ void AlertMng(void){
 			}
 			else{
 				// send a SMS to say that there is no update available
-				sprintf(buff, "  No firmware found or host not available." ); 
+				sprintf(buff, "  No new firmware found or host not available." ); 
 				Serial.println(buff);
 				SendSMS(MyParam.myphonenumber, buff);	
 			}
@@ -1518,12 +1521,15 @@ void Scheduler() {
 	}
 }
 
+
+
 //----------------------------------------------------------------------
 //!\brief           SETUP()
 //----------------------------------------------------------------------
 void setup() {
 	// put your setup code here, to run once:
 	Serial.begin(115200);
+	Serial.setTimeout(2000);
 	
 	// set I/O direction
 	pinMode(LEDALARM, OUTPUT);
@@ -1540,26 +1546,37 @@ void setup() {
 	
 	// LTask will help you out with locking the mutex so you can access the global data
     LTask.remoteCall(createThread1, NULL);
+	LTask.remoteCall(createThreadSerialMenu, NULL);
 	//LTask.remoteCall(createThreadFW, NULL);
 	Serial.println("Launch threads.");
 	
 	// GSM setup
-	while(!LSMS.ready()){
+	unsigned int nbtry;
+	while(!LSMS.ready() && nbtry <= 10){
 		delay(1000);
 		Serial.println("Please insert SIM");
-	}
-	Serial.println("SIM ready.");	
-	
-	Serial.println("Deleting SMS received ...");
-	//delete ALL sms received while powered off
-	while(LSMS.available()){
-		LSMS.flush(); // delete message
+		nbtry++;
 	}
 	
-	Serial.printf("init gprs... \r\n");
-	while (!LGPRS.attachGPRS("Free", NULL, NULL)) {
-		delay(500);
+	if(LSMS.ready()){
+		Serial.println("SIM ready.");	
+		
+		Serial.println("Deleting SMS received ...");
+		//delete ALL sms received while powered off
+		while(LSMS.available()){
+			LSMS.flush(); // delete message
+		}
+		
+		Serial.printf("init gprs... \r\n");
+		while (!LGPRS.attachGPRS("Free", NULL, NULL)) {
+			delay(500);
+		}	
 	}
+	else{
+		Serial.println("No SIM Detected.");	
+	}
+	
+
 	OTAUpdate.begin("92.245.144.185", "50150", "OTA_pepettebox");
 	
 	// load params from EEPROM
@@ -1613,10 +1630,10 @@ boolean createThread1(void* userdata) {
     return true;
 }
 
-boolean createThreadFW(void* userdata) {
+boolean createThreadSerialMenu(void* userdata) {
 	// The priority can be 1 - 255 and default priority are 0
 	// the arduino priority are 245
-	vm_thread_create(thread_fwupdate, NULL, 255);
+	vm_thread_create(thread_serialmenu, NULL, 255);
     return true;
 }
 
@@ -1664,12 +1681,33 @@ VMINT32 thread_ledgps(VM_THREAD_HANDLE thread_handle, void* user_data){
 }
 
 //----------------------------------------------------------------------
-//!\brief           THREAD FOR FIRMWARE UPDATE
+//!\brief           THREAD THAT MANAGE SERIAL MENU
+//!\brief			Read serial console to menu access
 //---------------------------------------------------------------------- 
-VMINT32 thread_fwupdate(VM_THREAD_HANDLE thread_handle, void* user_data){
-    for (;;){
-        delay(1000);
-		
+VMINT32 thread_serialmenu(VM_THREAD_HANDLE thread_handle, void* user_data){
+    
+	char buffth[255];
+	String stSerial;
+	for (;;){
+		// get the string hit on serial port
+		stSerial = Serial.readStringUntil('\n');
+		// if something has been typed
+		if(stSerial != ""){
+			// first delete \n
+			stSerial.replace("\n","");
+			stSerial.replace("\r","");
+			// copy serial to SMS structure			
+			size_t destination_size = sizeof (stSerial);
+			stSerial.toCharArray(MySMS.message, destination_size);
+			//DEBUG
+			sprintf(buffth, ">> SERIAL get : %s", MySMS.message);
+			Serial.println(buffth);
+			// Write 0 in phone number to reply
+			sprintf(MySMS.incomingnumber, "+33000000000");
+			// Do as we have receive an SMS : set flag to analyse this SMS
+			MyFlag.SMSReceived = true;
+		}
+		delay(500);		
     }
     return 0;
 }
