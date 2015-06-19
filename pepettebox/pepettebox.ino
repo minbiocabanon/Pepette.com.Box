@@ -298,15 +298,15 @@ void GetAnalogRead(void){
 		}
 		// compute median value input voltage
 		MyExternalSupply.raw = samples_A0.getMedian();
-		sprintf(buff," Analog raw input = %2.1f\r\n", MyExternalSupply.raw );
+		sprintf(buff," Analog raw input = %2.2f\r\n", MyExternalSupply.raw );
 		Serial.print(buff);
 		// convert raw data to voltage
-		MyExternalSupply.analog_voltage = MyExternalSupply.raw * 5.0 / 1024.0;
-		sprintf(buff," Analog voltage= %2.1fV\r\n", MyExternalSupply.analog_voltage );
+		MyExternalSupply.analog_voltage = MyExternalSupply.raw * VCC_5V / 1024.00;
+		sprintf(buff," Analog voltage= %2.2fV\r\n", MyExternalSupply.analog_voltage );
 		Serial.print(buff);
 		// compute true input voltage
-		MyExternalSupply.input_voltage = MyExternalSupply.analog_voltage * VOLT_DIVIDER_INPUT + 0.41; // +0.41V for forward voltage of protection diode
-		sprintf(buff," Input voltage= %2.1fV\r\n", MyExternalSupply.input_voltage );
+		MyExternalSupply.input_voltage = MyExternalSupply.analog_voltage * VOLT_DIVIDER_INPUT + 0.61; // +0.61V for forward voltage of protection diode
+		sprintf(buff," Input voltage= %2.2fV\r\n", MyExternalSupply.input_voltage );
 		Serial.println(buff);
 		
 		// compute median value for flood sensor voltage divider
@@ -314,17 +314,17 @@ void GetAnalogRead(void){
 		sprintf(buff," Flood sensor divider raw value = %2.1f\r\n", MyFloodSensor.raw_divider );
 		Serial.print(buff);
 		// convert raw data to voltage
-		MyFloodSensor.analog_voltage_divider = MyFloodSensor.raw_divider * 5.0 / 1024.0;
-		sprintf(buff," Flood sensor divider voltage = %3.1fV\r\n", MyFloodSensor.analog_voltage_divider );
+		MyFloodSensor.analog_voltage_divider = MyFloodSensor.raw_divider * VCC_5V / 1024.00;
+		sprintf(buff," Flood sensor divider voltage = %3.2fV\r\n", MyFloodSensor.analog_voltage_divider );
 		Serial.print(buff);
 		
 		// compute median value for flood sensor raw voltage
 		MyFloodSensor.raw = samples_A2.getMedian();
-		sprintf(buff," Flood sensor raw value= %3.1f\r\n", MyFloodSensor.raw );
+		sprintf(buff," Flood sensor raw value= %3.2f\r\n", MyFloodSensor.raw );
 		Serial.print(buff);
 		// convert raw data to voltage
-		MyFloodSensor.analog_voltage = MyFloodSensor.raw * 5.0 / 1024.0;
-		sprintf(buff," Flood sensor raw voltage = %3.1fV\r\n", MyFloodSensor.analog_voltage );
+		MyFloodSensor.analog_voltage = MyFloodSensor.raw * VCC_5V / 1024.00;
+		sprintf(buff," Flood sensor raw voltage = %3.2fV\r\n", MyFloodSensor.analog_voltage );
 		Serial.print(buff);		
 		
 		Serial.println();
@@ -926,12 +926,11 @@ void ProcessMenuMain(void){
 				sprintf(chargdir,"charging");				
 			//if GPS is fixed , prepare a complete message
 			if(MyFlag.fix3D == true){
-				//sprintf(buff, "Status : \r\nCurrent position is : https://www.google.com/maps?q=%2.6f%c,%3.6f%c \r\nLiPo = %d%%, %s\r\nExternal supply : %2.1fV\r\nFlood sensor is %s.\n\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s.", MyGPSPos.latitude, MyGPSPos.latitude_dir, MyGPSPos.longitude, MyGPSPos.longitude_dir, MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagstatus_flood, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood);
-			sprintf(buff, "Status : \r\nCurrent position is : https://www.google.com/maps?q=%2.6f%c,%3.6f%c \r\nLiPo = %d%%, %s\r\nExternal supply : %2.1fV\r\nFlood sensor is %s.\n\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s (%d).", MyGPSPos.latitude, MyGPSPos.latitude_dir, MyGPSPos.longitude, MyGPSPos.longitude_dir, MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagstatus_flood, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood, MyFloodSensor.raw); 				
+				sprintf(buff, "Status : \r\nCurrent position is : https://www.google.com/maps?q=%2.6f%c,%3.6f%c \r\nLiPo = %d%%, %s\r\nExternal supply : %2.2fV\r\nFlood sensor is %s.\n\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s (%3.1f).", MyGPSPos.latitude, MyGPSPos.latitude_dir, MyGPSPos.longitude, MyGPSPos.longitude_dir, MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagstatus_flood, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood, MyFloodSensor.raw);
 			}
 			// else, use short form message
 			else{
-				sprintf(buff, "Status : \r\nNO position fix.\r\nLiPo = %d%%, %s\r\nExternal supply : %2.1fV\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s.", MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood); 
+				sprintf(buff, "Status : \r\nNO position fix.\r\nLiPo = %d%%, %s\r\nExternal supply : %2.2fV\r\nFlood sensor is %s.\n\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s (%3.1f)", MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagstatus_flood, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood, MyFloodSensor.raw); 
 			}
 			Serial.println(buff);
 			SendSMS(MySMS.incomingnumber, buff);
@@ -1007,7 +1006,7 @@ void ProcessMenuMain(void){
 		case CMD_CHG_SECRET:
 			Serial.println("Change secret code");
 			//prepare SMS content
-			sprintf(buff, "Send : oldcode,newcode\r\nLimit to 4 caracters."); 
+			sprintf(buff, "Send : oldcode,newcode\r\nUse 4 caracters."); 
 			Serial.println(buff);
 			//send SMS
 			SendSMS(MySMS.incomingnumber, buff);
@@ -1547,7 +1546,6 @@ void setup() {
 	// LTask will help you out with locking the mutex so you can access the global data
     LTask.remoteCall(createThread1, NULL);
 	LTask.remoteCall(createThreadSerialMenu, NULL);
-	//LTask.remoteCall(createThreadFW, NULL);
 	Serial.println("Launch threads.");
 	
 	// GSM setup

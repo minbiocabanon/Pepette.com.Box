@@ -7,7 +7,8 @@
 
 // Analog input
 #define NB_SAMPLE_ANALOG		16
-#define VOLT_DIVIDER_INPUT		5.964 		// Voltage divider ratio for mesuring input voltage. 
+#define VCC_5V					4.97
+#define VOLT_DIVIDER_INPUT		10.54123	// Voltage divider ratio for mesuring input voltage. 
 #define MIN_DC_IN				9			// Minimum input voltage
 #define MAX_DC_IN				36			// Max input voltage
 
@@ -69,7 +70,7 @@ struct Battery {
 	}MyBattery;
 	
 struct AnalogInput {
-	long raw;
+	double raw;
 	double analog_voltage;
 	double input_voltage;
 	}MyExternalSupply;	
