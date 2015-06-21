@@ -926,7 +926,7 @@ void ProcessMenuMain(void){
 				sprintf(chargdir,"charging");				
 			//if GPS is fixed , prepare a complete message
 			if(MyFlag.fix3D == true){
-				sprintf(buff, "Status : \r\nCurrent position is : https://www.google.com/maps?q=%2.6f%c,%3.6f%c \r\nLiPo = %d%%, %s\r\nExternal supply : %2.2fV\r\nFlood sensor is %s.\n\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s (%3.1f).", MyGPSPos.latitude, MyGPSPos.latitude_dir, MyGPSPos.longitude, MyGPSPos.longitude_dir, MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagstatus_flood, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood, MyFloodSensor.raw);
+				sprintf(buff, "Status : \r\nCurrent position is : https://www.google.com/maps?q=%2.6f%c,%3.6f%c \r\nSatellites:%d\r\nLiPo = %d%%, %s\r\nExternal supply : %2.2fV\r\nFlood sensor is %s.\n\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s (%3.1f).", MyGPSPos.latitude, MyGPSPos.latitude_dir, MyGPSPos.longitude, MyGPSPos.longitude_dir, MyGPSPos.num,MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagstatus_flood, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood, MyFloodSensor.raw);
 			}
 			// else, use short form message
 			else{
