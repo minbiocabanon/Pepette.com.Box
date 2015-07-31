@@ -36,7 +36,7 @@
 #define BASE_LON_DIR	'E'
 
 // Phone number to call or for SMS
-#define MYPHONENUMBER	"+33679707918"		// Default phone number where to send messages
+#define MYPHONENUMBER	"+33000000000"		// Default phone number where to send messages
 
 // SMS Menu
 #define SMSSECRET	"1234"					// Default secret code to activate menu
