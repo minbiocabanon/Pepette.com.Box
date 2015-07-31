@@ -23,7 +23,3 @@
 #define PERIOD_CHECK_SMS		1000		// 1 sec., interval between 2 SMS check, in milliseconds
 #define TIMEOUT_SMS_MENU		300000		// 5 min., when timeout, SMS menu return to login (user should send password again to log), in milliseconds
 #define PERIODIC_STATUS_SMS		60000		// 1 min. (DO NOT CHANGE) : interval between two Hour+Minute check of periodic time (see below)
-
-#define PERIODIC_CHECK_FW		60000		// 1 min. (DO NOT CHANGE) : interval between two Hour+Minute check of periodic time (see below)
-#define PERIODIC_CHECK_FW_H		12			// Hour for time of periodic check of firmware
-#define PERIODIC_CHECK_FW_M		30			// Minute for time of periodic check of firmware

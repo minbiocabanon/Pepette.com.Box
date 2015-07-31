@@ -69,8 +69,6 @@ unsigned long taskCheckSMS;
 unsigned long taskCheckFlood;
 unsigned long taskStatusSMS;
 unsigned long TimeOutSMSMenu;
-unsigned long taskCheckFW;
-
 
 //----------------------------------------------------------------------
 //!\brief	returns distance in meters between two positions, both specified
@@ -1101,7 +1099,6 @@ void ProcessMenuMain(void){
 			SendSMS(MySMS.incomingnumber, buff);
 			// set flag to force firmware update
 			MyFlag.ForceFWUpdate = true;
-			MyFlag.taskCheckFW = true;
 			break;
 			
 		case CMD_RESTORE_DFLT:
@@ -1328,36 +1325,38 @@ void AlertMng(void){
 		// reset flags
 		MyParam.flag_alarm_low_bat = false;
 		MyFlag.taskCheckInputVoltage = false;
-	}
-	
-	// Check if it's time to check for a firmware update on the server
-	if (  MyFlag.taskCheckFW ){
-		// reset flag
-		MyFlag.taskCheckFW = false;
-		// check if hour + minute is reach 
-		if ( (MyGPSPos.hour == PERIODIC_CHECK_FW_H && MyGPSPos.minute == PERIODIC_CHECK_FW_M) || MyFlag.ForceFWUpdate == true){
-			// reset flag
-			MyFlag.ForceFWUpdate = false;
-			Serial.println("--- AlertMng : FW check on the server");
-			// It's time to check if there is a Firmware update on the remote server
-			// The following code can take some minutes to proceed ...
-			if (OTAUpdate.checkUpdate()) {
-				// send a SMS to warn user that is device will be updated
-				sprintf(buff, "  A new firmware version is available. Update is running now ... Your device will restart soon." ); 
-				Serial.println(buff);
-				SendSMS(MyParam.myphonenumber, buff);			
-				// DO update			
-				OTAUpdate.startUpdate();
-			}
-			else{
-				// send a SMS to say that there is no update available
-				sprintf(buff, "  No new firmware found or host not available." ); 
-				Serial.println(buff);
-				SendSMS(MyParam.myphonenumber, buff);	
-			}
-		}
 	}	
 }
+
+//----------------------------------------------------------------------
+//!\brief	Check if a new firmware update is available (by SMS action)
+//!\return  -
+//----------------------------------------------------------------------
+void CheckFirwareUpdate( void ){
+	// if we have previously received an SMS a firmware update checking message
+	if ( MyFlag.ForceFWUpdate == true ){
+		// reset flag
+		MyFlag.ForceFWUpdate = false;
+		Serial.println("--- CheckFirwareUpdate : FW check on the server");
+		// It's time to check if there is a Firmware update on the remote server
+		// The following code can take some minutes to proceed ...
+		if (OTAUpdate.checkUpdate()) {
+			// send a SMS to warn user that is device will be updated
+			sprintf(buff, "  A new firmware version is available. Update is running now ... Your device will restart soon." ); 
+			Serial.println(buff);
+			SendSMS(MyParam.myphonenumber, buff);			
+			// DO update			
+			OTAUpdate.startUpdate();
+		}
+		else{
+			// send a SMS to say that there is no update available
+			sprintf(buff, "  No new firmware found or host not available." ); 
+			Serial.println(buff);
+			SendSMS(MyParam.myphonenumber, buff);	
+		}
+	}
+}
+
 //----------------------------------------------------------------------
 //!\brief	Load params from EEPROM
 //----------------------------------------------------------------------
@@ -1499,11 +1498,6 @@ void Scheduler() {
 		MyFlag.taskStatusSMS = true;
 	}
 
-	if( (millis() - taskCheckFW) > PERIODIC_CHECK_FW){
-		taskCheckFW = millis();
-		MyFlag.taskCheckFW = true;
-	}
-
 	if( (millis() - taskGetAnalog) > PERIOD_READ_ANALOG){
 		taskGetAnalog = millis();
 		MyFlag.taskGetAnalog = true;
@@ -1519,8 +1513,6 @@ void Scheduler() {
 		Serial.println("--- SMS Menu manager : Timeout ---");
 	}
 }
-
-
 
 //----------------------------------------------------------------------
 //!\brief           SETUP()
@@ -1592,7 +1584,6 @@ void setup() {
 	taskGetAnalog = millis();
 	taskCheckSMS = millis();
 	taskStatusSMS = millis();
-	taskCheckFW = millis();
 	
 	// set this flag to proceed a first LiPO level read (if an SMS is received before timer occurs)
 	MyFlag.taskGetLiPo = true;
@@ -1616,6 +1607,7 @@ void loop() {
 	// SendGPS2Wifi();
 	Geofencing();
 	AlertMng();
+	CheckFirwareUpdate();
 }
 
 //----------------------------------------------------------------------
