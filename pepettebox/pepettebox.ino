@@ -41,6 +41,12 @@
 #include "pepettebox.h"
 #include "myperiod.h"
 
+//--------------------------------------------------
+//! \version	
+//--------------------------------------------------
+#define	FWVERSION	2
+
+
 // SMS menu architecture
 #define TXT_MAIN_MENU	"Main Menu\r\n1 : Status\r\n2 : Alarm ON\r\n3 : Alarm OFF\r\n4 : Params\r\n0 : Exit"
 #define TXT_PARAMS_MENU "Params Menu\r\n 5 : Change default num.\r\n 6 : Change coord.\r\n 7 : Change radius\r\n 8 : Change secret\r\n 9 : Periodic status ON\r\n10 : Periodic status OFF\r\n11 : Low power alarm ON\r\n12 : Low power alarm OFF\r\n13 : Change low power trig.\r\n14 : Change flood sensor trig.\r\n15 : Update firmware\r\n16 : Restore factory settings"
@@ -924,11 +930,11 @@ void ProcessMenuMain(void){
 				sprintf(chargdir,"charging");				
 			//if GPS is fixed , prepare a complete message
 			if(MyFlag.fix3D == true){
-				sprintf(buff, "Status : \r\nCurrent position is : https://www.google.com/maps?q=%2.6f%c,%3.6f%c \r\nSatellites:%d\r\nLiPo = %d%%, %s\r\nExternal supply : %2.2fV\r\nFlood sensor is %s.\n\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s (%3.1f).", MyGPSPos.latitude, MyGPSPos.latitude_dir, MyGPSPos.longitude, MyGPSPos.longitude_dir, MyGPSPos.num,MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagstatus_flood, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood, MyFloodSensor.raw);
+				sprintf(buff, "Status : \r\nCurrent position is : https://www.google.com/maps?q=%2.6f%c,%3.6f%c \r\nSatellites:%d\r\nLiPo = %d%%, %s\r\nExternal supply : %2.2fV\r\nFlood sensor is %s.\n\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s (%3.1f)\r\nFw v%d.", MyGPSPos.latitude, MyGPSPos.latitude_dir, MyGPSPos.longitude, MyGPSPos.longitude_dir, MyGPSPos.num,MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagstatus_flood, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood, MyFloodSensor.raw, FWVERSION);
 			}
 			// else, use short form message
 			else{
-				sprintf(buff, "Status : \r\nNO position fix.\r\nLiPo = %d%%, %s\r\nExternal supply : %2.2fV\r\nFlood sensor is %s.\n\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s (%3.1f)", MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagstatus_flood, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood, MyFloodSensor.raw); 
+				sprintf(buff, "Status : \r\nNO position fix.\r\nLiPo = %d%%, %s\r\nExternal supply : %2.2fV\r\nFlood sensor is %s.\n\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s (%3.1f)\r\nFw v%d", MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagstatus_flood, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood, MyFloodSensor.raw,FWVERSION); 
 			}
 			Serial.println(buff);
 			SendSMS(MySMS.incomingnumber, buff);
@@ -1296,7 +1302,7 @@ void AlertMng(void){
 			//convert bit to string
 			if(MyBattery.charging_status)
 				sprintf(chargdir,"charging");			
-			sprintf(buff, "Periodic status : \r\nCurrent position is : https://www.google.com/maps?q=%2.6f%c,%3.6f%c \r\nLiPo = %d%%, %s\r\nExternal supply : %2.1fV\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s.", MyGPSPos.latitude, MyGPSPos.latitude_dir, MyGPSPos.longitude, MyGPSPos.longitude_dir, MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood); 
+			sprintf(buff, "Periodic status : \r\nCurrent position is : https://www.google.com/maps?q=%2.6f%c,%3.6f%c \r\nLiPo = %d%%, %s\r\nExternal supply : %2.1fV\r\nGeofencing alarm is %s.\r\nPeriodic SMS is %s.\r\nLow input voltage alarm is %s.\r\nFlood alarm is %s\r\nFw v%d", MyGPSPos.latitude, MyGPSPos.latitude_dir, MyGPSPos.longitude, MyGPSPos.longitude_dir, MyBattery.LiPo_level, chargdir, MyExternalSupply.input_voltage, flagalarm, flagalarm_period, flagalarm_lowbat, flagalarm_flood, FWVERSION); 
 			Serial.println(buff);
 			SendSMS(MyParam.myphonenumber, buff);
 		}
@@ -1590,7 +1596,12 @@ void setup() {
 	// set this flag to proceed a first analog read (external supply)
 	MyFlag.taskGetAnalog = true;
 	
-	Serial.println("Setup done.");	
+	Serial.println("Setup done.");
+
+	// send an SMS to inform user that the device has boot
+	sprintf(buff, "PepetteBox is running.\r\n Firmware version : %d", FWVERSION); 
+	Serial.println(buff);
+	SendSMS(MyParam.myphonenumber, buff);	
 }
 
 //----------------------------------------------------------------------
@@ -1604,7 +1615,6 @@ void loop() {
 	CheckFloodSensor();
 	CheckSMSrecept();
 	MenuSMS();
-	// SendGPS2Wifi();
 	Geofencing();
 	AlertMng();
 	CheckFirwareUpdate();
