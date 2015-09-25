@@ -96,34 +96,34 @@ boolean OTAUpdateClass::getFirmwareDigest(char* digest, size_t size) {
 	}
 }
 
-boolean OTAUpdateClass::checkUpdate(void) {
+unsigned int OTAUpdateClass::checkUpdate(void) {
 	String vxp_name, vxp_digest;
 	
 	if(!downloadFile(UPDATE_MD5)) {
-		return false;
+		return 1;
 	}
-			
+		
 	if(!parseUpdateMD5(&vxp_name, &vxp_digest)) {
-		return false;
+		return 2;
 	}
 	
 	if(checkMD5(this->firmware_name, vxp_digest.c_str())) {
 		DEBUG_UPDATE("found no new firmware!\r\n");
-		return false;
+		return 3;
 	}
-		
+	
 	DEBUG_UPDATE("found a new firmware %s [%s]!\r\n", vxp_name.c_str(), vxp_digest.c_str());
 	if(!downloadFile(UPDATE_VXP)) {
-		return false;
+		return 4;
 	}
-		
+	
 	if(!checkMD5("C:\\" UPDATE_VXP, vxp_digest.c_str())) {
 		DEBUG_UPDATE("new firmware has a wrong md5sum!\r\n");
-		return false;
+		return 5;
 	}
 	
 	DEBUG_UPDATE("new firmware is ok!\r\n");
-	return true;
+	return 6;
 }
 
 

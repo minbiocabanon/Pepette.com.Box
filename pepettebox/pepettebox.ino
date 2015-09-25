@@ -44,7 +44,7 @@
 //--------------------------------------------------
 //! \version	
 //--------------------------------------------------
-#define	FWVERSION	2
+#define	FWVERSION	3
 
 
 // SMS menu architecture
@@ -1346,20 +1346,62 @@ void CheckFirwareUpdate( void ){
 		Serial.println("--- CheckFirwareUpdate : FW check on the server");
 		// It's time to check if there is a Firmware update on the remote server
 		// The following code can take some minutes to proceed ...
-		if (OTAUpdate.checkUpdate()) {
-			// send a SMS to warn user that is device will be updated
-			sprintf(buff, "  A new firmware version is available. Update is running now ... Your device will restart soon." ); 
-			Serial.println(buff);
-			SendSMS(MyParam.myphonenumber, buff);			
-			// DO update			
-			OTAUpdate.startUpdate();
-		}
-		else{
-			// send a SMS to say that there is no update available
-			sprintf(buff, "  No new firmware found or host not available." ); 
-			Serial.println(buff);
-			SendSMS(MyParam.myphonenumber, buff);	
-		}
+		switch(OTAUpdate.checkUpdate()){
+			case 1:
+				// send a SMS to say that there is no update available
+				sprintf(buff, "  update.md5 not found or host not available." ); 
+				Serial.println(buff);
+				SendSMS(MyParam.myphonenumber, buff);						
+				break;
+				
+			case 2:
+				// send a SMS to say that there is an error while parsing md5 file
+				sprintf(buff, "  Error while parsing update.md5 file." ); 
+				Serial.println(buff);
+				SendSMS(MyParam.myphonenumber, buff);
+				break;
+			case 3:
+				// send a SMS to say that update.md5 does not contain a valid firmware name
+				sprintf(buff, "  update.md5 does not contain a valid firmware name" ); 
+				Serial.println(buff);
+				SendSMS(MyParam.myphonenumber, buff);
+				break;
+			case 4:
+				// send a SMS to say that there is an error while downloading update.vxp (update.md5 was well downloaded before)
+				sprintf(buff, "  Error while downloading update.vxp (update.md5 was well downloaded before)" ); 
+				Serial.println(buff);
+				SendSMS(MyParam.myphonenumber, buff);
+				break;
+			case 5:
+				// send a SMS to say that New firmware has a wrong md5sum!
+				sprintf(buff, "  New firmware has a wrong md5sum!" ); 
+				Serial.println(buff);
+				SendSMS(MyParam.myphonenumber, buff);
+				break;
+			case 6:
+				// send a SMS to warn user that is device will be updated
+				sprintf(buff, "  A new firmware version is available. Update is running now ... Your device will restart soon." ); 
+				Serial.println(buff);
+				SendSMS(MyParam.myphonenumber, buff);			
+				// DO update
+				OTAUpdate.startUpdate();
+				break;					
+		}		
+		
+		// if (OTAUpdate.checkUpdate()) {
+			// // send a SMS to warn user that is device will be updated
+			// sprintf(buff, "  A new firmware version is available. Update is running now ... Your device will restart soon." ); 
+			// Serial.println(buff);
+			// SendSMS(MyParam.myphonenumber, buff);			
+			// // DO update			
+			// OTAUpdate.startUpdate();
+		// }
+		// else{
+			// // send a SMS to say that there is no update available
+			// sprintf(buff, "  No new firmware found or host not available." ); 
+			// Serial.println(buff);
+			// SendSMS(MyParam.myphonenumber, buff);	
+		// }
 	}
 }
 
@@ -1573,7 +1615,8 @@ void setup() {
 	}
 	
 
-	OTAUpdate.begin("92.245.144.185", "50150", "OTA_pepettebox");
+	// OTAUpdate.begin("92.245.144.185", "50150", "OTA_pepettebox");
+	OTAUpdate.begin("91.224.149.231", "8080", "OTA/OTA_pepettebox");
 	
 	// load params from EEPROM
 	LoadParamEEPROM();
