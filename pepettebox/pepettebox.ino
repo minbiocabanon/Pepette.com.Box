@@ -44,7 +44,7 @@
 //--------------------------------------------------
 //! \version	
 //--------------------------------------------------
-#define	FWVERSION	3
+#define	FWVERSION	4
 
 
 // SMS menu architecture
@@ -1362,7 +1362,7 @@ void CheckFirwareUpdate( void ){
 				break;
 			case 3:
 				// send a SMS to say that update.md5 does not contain a valid firmware name
-				sprintf(buff, "  update.md5 does not contain a valid firmware name" ); 
+				sprintf(buff, "  Firmware is already up to date." ); 
 				Serial.println(buff);
 				SendSMS(MyParam.myphonenumber, buff);
 				break;

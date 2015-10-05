@@ -18,3 +18,10 @@ SMS box for monitoring voltage accumulators, water sensor and GPS position of a 
   
 - Be sure that the path server is accessible from the internet and then you can run OTAUpdate software on your LinkItOne
 
+
+#ToDo List
+
+Use concatenated SMS to accelerate command . Use comma for separating commands:
+Exemple :
+	1234,1  -> get status
+	
