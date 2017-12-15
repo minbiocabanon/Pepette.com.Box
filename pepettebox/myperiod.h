@@ -1,7 +1,7 @@
 //--------------------------------------------------
 //! \file		myperiod.h
 //! \brief		header file for period tuning
-//! \date		2015-Mar
+//! \date		2017-Dec
 //! \author		minbiocabanon
 //--------------------------------------------------
 

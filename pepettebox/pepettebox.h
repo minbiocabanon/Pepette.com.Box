@@ -39,6 +39,7 @@ struct EEPROM_param {
 	bool flag_periodic_status_onoff;	// 1 = send SMS periodic status ; 0 = no periodic status
 	bool flag_alarm_low_bat;			// 1 = send SMS alarm when low voltage detected at input voltage (can be an external batt.) ; 0 = do not check input voltage
 	bool flag_alarm_flood;				// 1 = send alarm when water detected ; 0 = don't care about water
+	bool autotestSMSFail;				// 1 = indicates that autotest SMS has failed
 	char myphonenumber[13];				// Default phone number where to send messages
 	unsigned int radius;	
 	double base_lat;

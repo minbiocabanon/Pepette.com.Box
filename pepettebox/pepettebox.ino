@@ -469,6 +469,12 @@ void AutoTestSMS(void){
 		// reset flags
 		MyFlag.autotestSMSNOK = false;
 		
+		//Save in eeprom that this is forced reset, that allows to know at startup what is the cause
+		Serial.println("  Save this event in eeprom");
+		MyParam.autotestSMSFail = true;
+		//Save change in EEPROM
+		EEPROM_writeAnything(0, MyParam);
+		Serial.println("Data saved in EEPROM");
 		
 		// here -> reboot modem ou reboot linkitone (let external watchdog expires??)
 		sprintf(buff, " what to do now ????????????????");
@@ -877,6 +883,7 @@ void ProcessChgFloodSensorTrig(){
 void CheckAutotestSMS(){
 	//compare secret code with received sms code
 	if( strcmp(MySMS.message, AUTOTESTSMSCONTENTS) == 0 ){
+	//if( strcmp(MySMS.message, "thisisnotthegoodpass") == 0 ){
 		// password is OK
 		Serial.println("Autotest is OK");
 		// autotest is OK, we can return to normal state
@@ -1494,6 +1501,7 @@ void LoadParamEEPROM() {
 		MyParam.flag_periodic_status_onoff = FLAG_PERIODIC_STATUS_ONOFF;	
 		MyParam.flag_alarm_low_bat = FLAG_ALARM_LOW_BAT;
 		MyParam.flag_alarm_flood = FLAG_ALARM_FLOOD;
+		MyParam.autotestSMSFail = AUTOTESTSMSFAIL;
 		size_t destination_size = sizeof (MyParam.smssecret);
 		snprintf(MyParam.smssecret, destination_size, "%s", SMSSECRET);
 		destination_size = sizeof (MyParam.myphonenumber);
@@ -1558,6 +1566,13 @@ void PrintMyParam() {
 	if(MyParam.flag_alarm_flood)
 		sprintf(flag,"ON");	
 	sprintf(buff, "  flag_alarm_flood = %s", flag);
+	Serial.println(buff);
+	
+	sprintf(flag,"OFF");
+	//convert bit to string
+	if(MyParam.autotestSMSFail)
+		sprintf(flag,"ON");	
+	sprintf(buff, "  autotestSMSFail = %s", flag);
 	Serial.println(buff);
 	
 	sprintf(buff, "  smssecret = %s", MyParam.smssecret);
@@ -1704,10 +1719,10 @@ void setup() {
 	LoadParamEEPROM();
 	//print structure
 	PrintMyParam();
-	
+
 	// init default position in sms menu
 	MySMS.menupos = SM_LOGIN;
-	
+
 	// for scheduler
 	taskGetGPS = millis();
 	taskTestGeof = millis();
@@ -1716,7 +1731,7 @@ void setup() {
 	taskCheckSMS = millis();
 	taskAutoTestSMS = millis();
 	taskStatusSMS = millis();
-	
+
 	// set this flag to proceed a first LiPO level read (if an SMS is received before timer occurs)
 	MyFlag.taskGetLiPo = true;
 	// set this flag to proceed a first analog read (external supply)
@@ -1725,13 +1740,28 @@ void setup() {
 	MyFlag.autotestSMSNOK = false;
 	// set this flag to false by default
 	MyFlag.waitSMSAutotest = false;
-	
-	Serial.println("Setup done.");
 
 	// send an SMS to inform user that the device has boot
 	sprintf(buff, "PepetteBox is running.\r\n Firmware version : %d", FWVERSION); 
 	Serial.println(buff);
-	SendSMS(MyParam.myphonenumber, buff);	
+	SendSMS(MyParam.myphonenumber, buff);
+
+	// check if this startup was caused by a forced reset (autotest SMS failed)
+	if (MyParam.autotestSMSFail == true){
+		// reset flag
+		Serial.println("Clearing autotestSMSFail in EEPROM...");
+		MyParam.autotestSMSFail = false;
+		//Save change in EEPROM
+		EEPROM_writeAnything(0, MyParam);
+		Serial.println("Data saved in EEPROM");
+		// Send an SMS to inform user that this was a forced reset
+		Serial.println("Preparing SMS for user :");
+		sprintf(buff, "PepetteBox has reboot due to SMS autotest failure.\r\n"); 
+		Serial.println(buff);
+		SendSMS(MyParam.myphonenumber, buff);
+	}	
+
+	Serial.println("Setup done.");
 }
 
 //----------------------------------------------------------------------

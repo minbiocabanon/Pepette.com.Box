@@ -1,7 +1,7 @@
 //--------------------------------------------------
 //! \file		myprivatedata.h
 //! \brief		header file for private data as GPS coordinate, phone number and wifi credentials
-//! \date		2015-Mar
+//! \date		2017-Dec
 //! \author		minbiocabanon
 //--------------------------------------------------
 
@@ -16,8 +16,8 @@
 #define FLAG_ALARM_FLOOD			1	// 1 = send alarm if flood sensor detects water ;  0 = don't care about flooding
 
 #define TRIG_INPUT_LEVEL			11.6	// in volt, when input voltage is lower than this value, an SMS alarm will be sent
-					// 11.6V is a good level trig for 12V lead acid battery. Set lower voltage at your own risk !
-					// 23.2V is a good level trig for 24V lead acid battery. Set lower voltage at your own risk !
+											// 11.6V is a good level trig for 12V lead acid battery. Set lower voltage at your own risk !
+											// 23.2V is a good level trig for 24V lead acid battery. Set lower voltage at your own risk !
 
 //Params for geofencing
 #define RADIUS					150			// radius in meter for geofencing centered in BASE_LAT,BASE_LON. When GPS pos is outside this radius -> Alarm !
