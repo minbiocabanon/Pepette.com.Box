@@ -23,7 +23,7 @@
 #define RADIUS					150			// radius in meter for geofencing centered in BASE_LAT,BASE_LON. When GPS pos is outside this radius -> Alarm !
 
 // Params for flood sensor (analog)
-#define FLOODSENSOR_TRIG		500.0	// Trigger value on raw data (ADC) on direct ready from flood sensor
+#define FLOODSENSOR_TRIG		600.0	// Trigger value on raw data (ADC) on direct ready from flood sensor
 										// Dry sensor : 0-10
 										// Sensor touched with finger : 100-300
 										// wet sensor : ~700-800
@@ -37,6 +37,7 @@
 
 // Phone number to call or for SMS
 #define MYPHONENUMBER	"+33000000000"		// Default phone number where to send messages
+#define SIMPHONENUMBER	"+33123456789"		// phone number of SIM card inserted in the linkitone
 
 // SMS Menu
 #define SMSSECRET	"1234"					// Default secret code to activate menu

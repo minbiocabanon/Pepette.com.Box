@@ -32,7 +32,7 @@
 #include <LFlash.h>
 #include <LGPRSClient.h>
 #include <LGPRS.h>
-#include "RunningMedian.h"
+#include <RunningMedian.h>
 #include "OTAUpdate.h"
 #include "OTAUtils.h"
 
@@ -44,7 +44,7 @@
 //--------------------------------------------------
 //! \version	
 //--------------------------------------------------
-#define	FWVERSION	4
+#define	FWVERSION	5
 
 
 // SMS menu architecture
@@ -52,7 +52,7 @@
 #define TXT_PARAMS_MENU "Params Menu\r\n 5 : Change default num.\r\n 6 : Change coord.\r\n 7 : Change radius\r\n 8 : Change secret\r\n 9 : Periodic status ON\r\n10 : Periodic status OFF\r\n11 : Low power alarm ON\r\n12 : Low power alarm OFF\r\n13 : Change low power trig.\r\n14 : Change flood sensor trig.\r\n15 : Update firmware\r\n16 : Restore factory settings"
 
 // Led gpio definition
-#define LEDGPS  				13
+#define LEDGPS  				0
 #define LEDALARM  				12
 
 // GPS
@@ -72,9 +72,11 @@ unsigned long taskGetLiPo;
 unsigned long taskGetAnalog;
 unsigned long taskCheckInputVoltage;
 unsigned long taskCheckSMS;
+unsigned long taskAutoTestSMS;
 unsigned long taskCheckFlood;
 unsigned long taskStatusSMS;
 unsigned long TimeOutSMSMenu;
+unsigned long TimeOutAutotestSMS;
 
 //----------------------------------------------------------------------
 //!\brief	returns distance in meters between two positions, both specified
@@ -363,9 +365,9 @@ void CheckFloodSensor(void){
 		// }
 		
 		// if read value is higher than trigger value, it's mean that there is too much water !
-		if ( MyFloodSensor.raw > FLOODSENSOR_TRIG ){
+		if ( MyFloodSensor.raw > MyParam.flood_sensor_trig ){
 			//prepare SMS to warn user
-			sprintf(buff, " Alert! flood sensor has detected water.\r\n Input value is %3.1f\r\n(trigger value is %3.1f).", MyFloodSensor.raw, FLOODSENSOR_TRIG); 
+			sprintf(buff, " Alert! flood sensor has detected water.\r\n Input value is %3.1f\r\n(trigger value is %3.1f).", MyFloodSensor.raw, MyParam.flood_sensor_trig); 
 			Serial.println(buff);
 			//send SMS
 			SendSMS(MySMS.incomingnumber, buff);
@@ -373,7 +375,7 @@ void CheckFloodSensor(void){
 			MyFloodSensor.value = FLOODSENSOR_ACTIVE; 
 		}
 		else{
-			sprintf(buff, " Flood sensor is dry.\r\n Input value is %3.1f\r\n(trigger value is %3.1f) \r\n", MyFloodSensor.raw, FLOODSENSOR_TRIG); 
+			sprintf(buff, " Flood sensor is dry.\r\n Input value is %3.1f\r\n(trigger value is %3.1f) \r\n", MyFloodSensor.raw, MyParam.flood_sensor_trig); 
 			Serial.println(buff);
 			// set the flag
 			MyFloodSensor.value = FLOODSENSOR_ACTIVE+1; 
@@ -429,6 +431,49 @@ void Geofencing(void){
 			MyFlag.PosOutiseArea = true;
 		}
 		Serial.println();
+	}
+}
+
+//----------------------------------------------------------------------
+//!\brief	Autotest SMS availability , send an autotest SMS if true
+//!\return  -
+//----------------------------------------------------------------------
+void AutoTestSMS(void){
+	// Check if it's time to do an SMS autotest
+	// second condition about state machine is to do not perform an autotest if user is communicating with the device, we will wait that state machine is in LOGIN state
+	if(MyFlag.taskAutoTestSMS && MySMS.menupos == SM_LOGIN){
+		// reset flag
+		MyFlag.taskAutoTestSMS = false;
+		
+		// send an autotest SMS
+		Serial.println("---  AutoTestSMS ---");		
+		Serial.println(" Sending autotest SMS");
+		sprintf(buff, AUTOTESTSMSCONTENTS); 
+		Serial.println(buff);
+		//send SMS
+		SendSMS(SIMPHONENUMBER, buff);	
+
+		//change state machine to SM_AUTOTEST_SMS
+		MySMS.menupos = SM_AUTOTEST_SMS;
+		// set flag for time out scheduler
+		MyFlag.waitSMSAutotest = true;
+		
+		// launch timeout 
+		TimeOutAutotestSMS = millis();
+		
+		// next step is to wait for receiving this SMS
+	}
+	
+	// check if TimeOutAutotestSMS as occured , that means that autotest SMS has not been received before timeout -> problem with modem or provider ?
+	if(MyFlag.autotestSMSNOK == true){
+		// reset flags
+		MyFlag.autotestSMSNOK = false;
+		
+		
+		// here -> reboot modem ou reboot linkitone (let external watchdog expires??)
+		sprintf(buff, " what to do now ????????????????");
+		Serial.println(buff);
+		reset();
 	}
 }
 
@@ -806,7 +851,7 @@ void ProcessChgFloodSensorTrig(){
 			MySMS.menupos = SM_MENU_MAIN;			
 		}
 		else{
-			sprintf(buff, "Error, value is outside range : %3.1fV", value_sms); 
+			sprintf(buff, "Error, value is outside range : %3.1f", value_sms); 
 			Serial.println(buff);
 			//send SMS
 			SendSMS(MySMS.incomingnumber, buff);	
@@ -824,6 +869,27 @@ void ProcessChgFloodSensorTrig(){
 	}
 }
 
+//----------------------------------------------------------------------
+//!\brief	Check if autotest SMS has been received
+//!\brief	MySMS.message should contain the secret code for autotest SMS
+//!\return  -
+//----------------------------------------------------------------------
+void CheckAutotestSMS(){
+	//compare secret code with received sms code
+	if( strcmp(MySMS.message, AUTOTESTSMSCONTENTS) == 0 ){
+		// password is OK
+		Serial.println("Autotest is OK");
+		// autotest is OK, we can return to normal state
+		MySMS.menupos = SM_LOGIN;
+	}
+	else{
+		sprintf(buff, "Error in autotest SMS : %s.", MySMS.message); 
+		Serial.println(buff);
+		//change state machine to SM_LOGIN, maybe it's an SMS from user
+		MySMS.menupos = SM_LOGIN;
+		MyFlag.SMSReceived = true;
+	}
+}
 
 //----------------------------------------------------------------------
 //!\brief	Proceed to restore all factory settings 
@@ -1090,7 +1156,7 @@ void ProcessMenuMain(void){
 		case CMD_CHG_FLOOD_TRIG:
 			Serial.println("Change flood sensor trigger");
 			//prepare SMS content
-			sprintf(buff, "Send value between %d and %d.\r\nCurrent value is %2.1f\r\nActual trig. is %3.1f", MIN_FLOOR, MAX_FLOOR, MyFloodSensor.analog_voltage, MyParam.flood_sensor_trig); 
+			sprintf(buff, "Send value between %d and %d.\r\nActual trig. is %3.1f", MIN_FLOOR, MAX_FLOOR, MyParam.flood_sensor_trig); 
 			Serial.println(buff);
 			//send SMS
 			SendSMS(MySMS.incomingnumber, buff);
@@ -1154,49 +1220,49 @@ void MenuSMS(void){
 					Serial.println(buff);
 				}
 				break;
-			
+
 			case SM_MENU_MAIN:
 				// reload timer to avoid auto-logout
 				TimeOutSMSMenu = millis();
 				Serial.println("Menu Main ");
 				ProcessMenuMain();
 				break;
-			
+
 			case SM_CHG_NUM:
 				// reload timer to avoid auto-logout
 				TimeOutSMSMenu = millis();
 				Serial.println("Proceed to change number");
 				ProcessChgNum();
 				break;
-				
+
 			case SM_CHG_COORD:
 				// reload timer to avoid auto-logout
 				TimeOutSMSMenu = millis();
 				Serial.println("Proceed to change coordinates");
 				ProcessChgCoord();
 				break;	
-				
+
 			case SM_CHG_RADIUS:
 				// reload timer to avoid auto-logout
 				TimeOutSMSMenu = millis();
 				Serial.println("Proceed to change geofencing radius");
 				ProcessChgRadius();
 				break;
-				
+
 			case SM_CHG_SECRET:
 				// reload timer to avoid auto-logout
 				TimeOutSMSMenu = millis();
 				Serial.println("Proceed to change secret code");
 				ProcessChgSecret();
 				break;
-			
+
 			case SM_RESTORE_DFLT:
 				// reload timer to avoid auto-logout
 				TimeOutSMSMenu = millis();
 				Serial.println("Proceed to restore default settings");
 				ProcessRestoreDefault();				
 				break;
-			
+
 			case SM_CHG_LOWPOW_TRIG:
 				// reload timer to avoid auto-logout
 				TimeOutSMSMenu = millis();
@@ -1209,7 +1275,12 @@ void MenuSMS(void){
 				TimeOutSMSMenu = millis();
 				Serial.println("Proceed to change flood sensor trig value");
 				ProcessChgFloodSensorTrig();
-				break;				
+				break;
+
+			case SM_AUTOTEST_SMS:
+				Serial.println("Check if SMS received is an autotest SMS");
+				CheckAutotestSMS();
+				break;	
 		}
 	
 		// SMS read reset flag
@@ -1412,7 +1483,7 @@ void LoadParamEEPROM() {
 	
 	EEPROM_readAnything(0, MyParam);
 	
-	//uncomment this line to erase EEPROM parameters with DEFAULT parameters
+	//uncomment this line to erase EEPROM parameters with DEFAULT parameters, DO NOT FORGOT to comment again after a first run, unlike it will erase EEPROM parameters at each boot
 	//MyParam.flag_data_written = false;
 	
 	//check if parameters were already written
@@ -1536,6 +1607,11 @@ void Scheduler() {
 		MyFlag.taskCheckSMS = true;
 	}
 	
+	if( (millis() - taskAutoTestSMS) > PERIOD_AUTOTEST_SMS){
+		taskAutoTestSMS = millis();
+		MyFlag.taskAutoTestSMS = true;
+	}	
+	
 	if( (millis() - taskCheckFlood) > PERIOD_CHECK_FLOOD){
 		taskCheckFlood = millis();
 		MyFlag.taskCheckFlood = true;
@@ -1554,6 +1630,12 @@ void Scheduler() {
 	if( (millis() - taskCheckInputVoltage) > PERIOD_CHECK_ANALOG_LEVEL){
 		taskCheckInputVoltage = millis();
 		MyFlag.taskCheckInputVoltage = true;
+	}
+
+	if( ((millis() - TimeOutAutotestSMS) > TIMEOUT_AUTOTEST_SMS) && MyFlag.waitSMSAutotest == true ){
+		Serial.println("--- Autotest SMS : Timeout , NO SMS received !! ---");
+		MyFlag.autotestSMSNOK = true;
+		MyFlag.waitSMSAutotest = false;
 	}
 	
 	if( ((millis() - TimeOutSMSMenu) > TIMEOUT_SMS_MENU) && MySMS.menupos != SM_LOGIN){
@@ -1632,12 +1714,17 @@ void setup() {
 	taskGetLiPo = millis();
 	taskGetAnalog = millis();
 	taskCheckSMS = millis();
+	taskAutoTestSMS = millis();
 	taskStatusSMS = millis();
 	
 	// set this flag to proceed a first LiPO level read (if an SMS is received before timer occurs)
 	MyFlag.taskGetLiPo = true;
 	// set this flag to proceed a first analog read (external supply)
 	MyFlag.taskGetAnalog = true;
+	// set this flag to false by default
+	MyFlag.autotestSMSNOK = false;
+	// set this flag to false by default
+	MyFlag.waitSMSAutotest = false;
 	
 	Serial.println("Setup done.");
 
@@ -1656,6 +1743,7 @@ void loop() {
 	GetLiPoInfo();
 	GetAnalogRead();
 	CheckFloodSensor();
+	AutoTestSMS();
 	CheckSMSrecept();
 	MenuSMS();
 	Geofencing();

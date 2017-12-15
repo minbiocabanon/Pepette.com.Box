@@ -1,6 +1,11 @@
 # Pepette.com.Box
 SMS box for monitoring voltage accumulators, water sensor and GPS position of a sailboat
 
+# Libraries needed
+install this lib :
+http://playground.arduino.cc/Main/RunningMedian
+
+# compatible with Arduino 1.5.8 + linkitone SDK
 
 ## How to prepare files for OTAUpdate
 
@@ -24,4 +29,8 @@ SMS box for monitoring voltage accumulators, water sensor and GPS position of a 
 Use concatenated SMS to accelerate command . Use comma for separating commands:
 Exemple :
 	1234,1  -> get status
-	
+
+# Version
+
+#15/12/2017
+	Check modem by autotest with sending an sms (loopback), if time out it will resets linkitone (reset fonction of OTAUpdate)

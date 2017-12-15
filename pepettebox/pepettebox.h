@@ -24,6 +24,8 @@
 #define MIN_FLOOR				0			// Minimum value for flood sensor trigger
 #define MAX_FLOOR				1000		// Maximum value for flood sensor trigger
 
+// Autotest SMS contents
+#define	AUTOTESTSMSCONTENTS		"__ThisIsAnAutotest__"
 
 
 //----------------------------------------------------------------------
@@ -45,7 +47,7 @@ struct EEPROM_param {
 	char base_lon_dir;
 	unsigned int lipo_level_trig;		// battery level, when trigged, should send an alarm
 	float trig_input_level;				// trigger alarm for low level input 
-	float flood_sensor_trig;				// trigger alarm for low level input 
+	float flood_sensor_trig;			// trigger alarm for flood sensor
 }MyParam;
 
 //----------------------------------------------------------------------
@@ -97,6 +99,9 @@ struct FlagReg {
 	bool taskTestGeof;	// flag to indicate when process geofencing
 	bool taskCheckSMS;	// flag to indicate when check SMS
 	bool taskCheckFlood;// flag to indicate when check Flood sensor
+	bool taskAutoTestSMS; // flag to indicate when process an SMS autotest to check that modem and/or sim card is working
+	bool waitSMSAutotest;	
+	bool autotestSMSNOK;
 	bool taskStatusSMS; // flat to indicate when it's time to send a periodic status SMS
 	bool SMSReceived;	// flag to indicate that an SMS has been received
 	bool fix3D;			// flag to indicate if fix is 3D (at least) or not
@@ -130,6 +135,7 @@ enum SMSMENU{
 	SM_RESTORE_DFLT, //7
 	SM_CHG_LOWPOW_TRIG, 	//8
 	SM_CHG_FLOODSENSORTRIG,	//9
+	SM_AUTOTEST_SMS			//10
 	};
 
 enum CMDSMS{
