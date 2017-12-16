@@ -14,7 +14,7 @@
 #define FLAG_PERIODIC_STATUS_ONOFF	1	// 1 = send periodic status  		; 0 = periodic status not allowed (will not send SMS)
 #define FLAG_ALARM_LOW_BAT			1	// 1 = send alarm when low voltage, set TRIG_INPUT_LEVEL to define treshol 	; 0 = no check
 #define FLAG_ALARM_FLOOD			1	// 1 = send alarm if flood sensor detects water ;  0 = don't care about flooding
-
+#define AUTOTESTSMSFAIL				0	// 0 = by default autotest SMS has not failed
 #define TRIG_INPUT_LEVEL			11.6	// in volt, when input voltage is lower than this value, an SMS alarm will be sent
 											// 11.6V is a good level trig for 12V lead acid battery. Set lower voltage at your own risk !
 											// 23.2V is a good level trig for 24V lead acid battery. Set lower voltage at your own risk !

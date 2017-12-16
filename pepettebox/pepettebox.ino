@@ -8,8 +8,9 @@
 //! \brief		Monitor LiPo cell voltage and can set an alarm on low power.
 //! \brief		Flood sensor interface (GPIO) or other sensor.
 //! \brief		Serial message are for debug purpose only.
-//! \brief		Over The Air by GPRS sketche update
-//! \date		2015-May
+//! \brief		Periodically send an autotest SMS to check modem/provider availability
+//! \brief		Over The Air by GPRS sketche update (bug !)
+//! \date		2017-Dec
 //! \author		minbiocabanon
 //--------------------------------------------------
 
@@ -441,26 +442,41 @@ void Geofencing(void){
 void AutoTestSMS(void){
 	// Check if it's time to do an SMS autotest
 	// second condition about state machine is to do not perform an autotest if user is communicating with the device, we will wait that state machine is in LOGIN state
-	if(MyFlag.taskAutoTestSMS && MySMS.menupos == SM_LOGIN){
-		// reset flag
-		MyFlag.taskAutoTestSMS = false;
-		
+	if(MyFlag.taskAutoTestSMS == true && MySMS.menupos == SM_LOGIN){
+
 		// send an autotest SMS
 		Serial.println("---  AutoTestSMS ---");		
-		Serial.println(" Sending autotest SMS");
-		sprintf(buff, AUTOTESTSMSCONTENTS); 
+		sprintf(buff, " Sending autotest SMS : %s @ %s",AUTOTESTSMSCONTENTS, SIMPHONENUMBER); 
 		Serial.println(buff);
+		sprintf(buff, AUTOTESTSMSCONTENTS); 
+				
+		// if an SMS autotest is not already pending (because previous SMS was not sent)
+		if( MyFlag.waitSMSAutotest == false){
+			// launch timeout in both case, if this timeout expire it means that there is a problem with SMS/provider 
+			TimeOutAutotestSMS = millis();
+		}
+		
 		//send SMS
-		SendSMS(SIMPHONENUMBER, buff);	
-
-		//change state machine to SM_AUTOTEST_SMS
-		MySMS.menupos = SM_AUTOTEST_SMS;
-		// set flag for time out scheduler
-		MyFlag.waitSMSAutotest = true;
-		
-		// launch timeout 
-		TimeOutAutotestSMS = millis();
-		
+		// if SMS was sent
+		if ( SendSMS(SIMPHONENUMBER, buff) == true) {
+			Serial.println("  Autotest SMS sent, waiting for receiving it. Timeout is running...");
+			//change state machine to SM_AUTOTEST_SMS
+			MySMS.menupos = SM_AUTOTEST_SMS;
+			// set flag for time out scheduler
+			MyFlag.waitSMSAutotest = true;
+			// reset this flag because this task is over
+			MyFlag.taskAutoTestSMS = false;
+		}
+		// SMS was not sent, we have to retry until timeout
+		else{
+			Serial.println("  Fail to send SMS autotest, try again later. Timeout is running...");
+			//keep state machine to SM_LOGIN to force retry
+			MySMS.menupos = SM_LOGIN;
+			// force this flag to retry
+			MyFlag.taskAutoTestSMS = true;
+			// set flag for time out scheduler
+			MyFlag.waitSMSAutotest = true;
+		}	
 		// next step is to wait for receiving this SMS
 	}
 	
@@ -468,17 +484,17 @@ void AutoTestSMS(void){
 	if(MyFlag.autotestSMSNOK == true){
 		// reset flags
 		MyFlag.autotestSMSNOK = false;
+		Serial.println(" !!!! TIME OUT AUTOTEST SMS !!!");
 		
 		//Save in eeprom that this is forced reset, that allows to know at startup what is the cause
-		Serial.println("  Save this event in eeprom");
+		Serial.println("  Saving this event in eeprom");
 		MyParam.autotestSMSFail = true;
 		//Save change in EEPROM
 		EEPROM_writeAnything(0, MyParam);
-		Serial.println("Data saved in EEPROM");
+		Serial.println("  Event saved in EEPROM");
 		
 		// here -> reboot modem ou reboot linkitone (let external watchdog expires??)
-		sprintf(buff, " what to do now ????????????????");
-		Serial.println(buff);
+		Serial.println("REBOOTING NOW !");
 		reset();
 	}
 }
@@ -888,6 +904,8 @@ void CheckAutotestSMS(){
 		Serial.println("Autotest is OK");
 		// autotest is OK, we can return to normal state
 		MySMS.menupos = SM_LOGIN;
+		// stop timeout
+		MyFlag.waitSMSAutotest = false;
 	}
 	else{
 		sprintf(buff, "Error in autotest SMS : %s.", MySMS.message); 
@@ -1285,6 +1303,8 @@ void MenuSMS(void){
 				break;
 
 			case SM_AUTOTEST_SMS:
+				// reload timer to avoid auto-logout
+				TimeOutSMSMenu = millis();
 				Serial.println("Check if SMS received is an autotest SMS");
 				CheckAutotestSMS();
 				break;	
@@ -1416,7 +1436,7 @@ void AlertMng(void){
 //!\brief	Check if a new firmware update is available (by SMS action)
 //!\return  -
 //----------------------------------------------------------------------
-void CheckFirwareUpdate( void ){
+void CheckFirmwareUpdate( void ){
 	// if we have previously received an SMS a firmware update checking message
 	if ( MyFlag.ForceFWUpdate == true ){
 		// reset flag
@@ -1465,21 +1485,6 @@ void CheckFirwareUpdate( void ){
 				OTAUpdate.startUpdate();
 				break;					
 		}		
-		
-		// if (OTAUpdate.checkUpdate()) {
-			// // send a SMS to warn user that is device will be updated
-			// sprintf(buff, "  A new firmware version is available. Update is running now ... Your device will restart soon." ); 
-			// Serial.println(buff);
-			// SendSMS(MyParam.myphonenumber, buff);			
-			// // DO update			
-			// OTAUpdate.startUpdate();
-		// }
-		// else{
-			// // send a SMS to say that there is no update available
-			// sprintf(buff, "  No new firmware found or host not available." ); 
-			// Serial.println(buff);
-			// SendSMS(MyParam.myphonenumber, buff);	
-		// }
 	}
 }
 
@@ -1578,6 +1583,8 @@ void PrintMyParam() {
 	sprintf(buff, "  smssecret = %s", MyParam.smssecret);
 	Serial.println(buff);
 	sprintf(buff, "  myphonenumber = %s", MyParam.myphonenumber);
+	Serial.println(buff);
+	sprintf(buff, "  SIMPHONENUMBER = %s", SIMPHONENUMBER);
 	Serial.println(buff);
 	sprintf(buff, "  radius = %d", MyParam.radius);
 	Serial.println(buff);	
@@ -1778,7 +1785,7 @@ void loop() {
 	MenuSMS();
 	Geofencing();
 	AlertMng();
-	CheckFirwareUpdate();
+	//CheckFirmwareUpdate();
 }
 
 //----------------------------------------------------------------------
